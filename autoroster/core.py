@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import pandas
 import openpyxl
 from openpyxl.utils.dataframe import dataframe_to_rows
@@ -8,15 +7,12 @@ def read_in_roster(path):
     df = pandas.read_excel(path, skiprows=2)
     return df
 
-
 def get_exam_list(dataframe):
     raw_exam_list = list(dataframe["SP Exam"].unique())
     exam_list = [exam for exam in raw_exam_list if str(
         type(exam)) == "<class 'str'>"]
     exam_list.sort()
     return exam_list
-
-
 def get_student_info(exam, dataframe):
     student_info = pandas.DataFrame(
         dataframe, columns=["Student Name", "No Show", "Completed"])
@@ -25,10 +21,11 @@ def get_student_info(exam, dataframe):
     sorted_info = processed.sort_values("Student Name")
     return sorted_info
 
+
 def make_workbook():
     return openpyxl.Workbook()
 
-def make_sheet(workbook, exam, date, student_info):
+def make_daily_report(workbook, exam, date, student_info):
     # Text Constants
     title = "Exam Roster Report"
     headers = ["Student Name", "No Show", "Completed", "Check 1", "Check 2"]
@@ -61,10 +58,6 @@ def make_sheet(workbook, exam, date, student_info):
     return None
 
 
-def save_workbook(workbook,path):
-    workbook.save(path)
-
-
 def set_border(ws, cell_range):
     border = Border(left=Side(border_style='thin', color='000000'),
                 right=Side(border_style='thin', color='000000'),
@@ -75,3 +68,10 @@ def set_border(ws, cell_range):
     for row in rows:
         for cell in row:
             cell.border = border
+
+def delete_blank_sheets(workbook):
+    sheet_to_delete = workbook.get_sheet_by_name('Sheet')
+    workbook.remove_sheet(sheet_to_delete)
+def save_workbook(workbook,path):
+    workbook.save(path)
+    return None

@@ -1,29 +1,52 @@
 #+title: Auto Roster Report Maker
 #+Author: Daniel Alexander Smith
 #+email: u0346076@utah.edu
+* TODO Readme
+#+BEGIN_SRC text :tangle README.md 
+#+END_SRC
+
+* TODO Licence
+#+BEGIN_SRC text :LICENCE.md 
+#+END_SRC
+
+* Requirements For Development
 #+name: requirements
-#+BEGIN_EXAMPLE
+#+BEGIN_SRC text :tangle requirements.txt 
   pandas
   numpy
   xlrd
   openpyxl
-#+END_EXAMPLE
+#+END_SRC
 
+* Pandas Functions
 #+name: pandas_functions
-#+BEGIN_SRC python :results output    
+#+BEGIN_SRC python     :noweb yes 
+  <<read_in_roster>>
+  <<get_exam_list>>
+  <<get_student_info>>
+#+END_SRC
+** DONE Read in roster as Dataframe
+#+name: read_in_roster
+#+BEGIN_SRC python
   def read_in_roster(path):
+      """reads in the roster report, and skips to the headers """
       df = pandas.read_excel(path, skiprows=2)
       return df
 
-
+#+END_SRC
+** DONE Get exam list
+#+name: get_exam_list
+#+BEGIN_SRC python
   def get_exam_list(dataframe):
       raw_exam_list = list(dataframe["SP Exam"].unique())
       exam_list = [exam for exam in raw_exam_list if str(
           type(exam)) == "<class 'str'>"]
       exam_list.sort()
       return exam_list
-
-
+#+END_SRC
+** DONE Get Student Info
+#+name: get_student_info
+#+BEGIN_SRC python
   def get_student_info(exam, dataframe):
       student_info = pandas.DataFrame(
           dataframe, columns=["Student Name", "No Show", "Completed"])
@@ -31,20 +54,30 @@
       processed = student_info[by_exam]
       sorted_info = processed.sort_values("Student Name")
       return sorted_info
+
 #+END_SRC
 
-#+RESULTS: pandas_functions
-:         Student Name No Show Completed
-: 10     ADAMS, JUSTIN     NaN         X
-: 12  GRINER, KAYLEIGH     NaN         X
-: 3        JANIS, ZACH     NaN         X
-: 14   JOHNSON, SAYLEE     NaN         X
-
+* Openpyxl Functions
 #+name: openpyxl_functions
+#+BEGIN_SRC python :noweb yes 
+  <<make_workbook>>
+  <<make_daily_report>>
+  <<set_boarder>>
+  <<delete_blank_sheets>>
+  <<save_workbook>>
+#+END_SRC
+** DONE Make Workbook
+#+name: make_workbook
 #+BEGIN_SRC python
+  def make_workbook():
+      return openpyxl.Workbook()
 
+#+END_SRC
 
-  def make_sheet(workbook, exam, date, student_info):
+** DONE Daily Report Header
+#+name: make_daily_report
+#+BEGIN_SRC python
+  def make_daily_report(workbook, exam, date, student_info):
       # Text Constants
       title = "Exam Roster Report"
       headers = ["Student Name", "No Show", "Completed", "Check 1", "Check 2"]
@@ -55,42 +88,248 @@
       ws.column_dimensions["A"].width = 19
       ws.column_dimensions["C"].width = 12
       ws.column_dimensions["D"].width = 12
-
+      # Sets up people field
       ws["A1"] = title
       ws["B1"] = exam
-      ws["A2"] = "Date: " + date
-      ws["B2"] = "Check #1: ___________"
-      ws["D2"] = "Check #2: ___________"
-      ws.append(headers)
+      ws["A3"] = "Date: " + date
+      ws["D3"] = "Exam Count: ________"
+      ws["A5"] = "Check #1: ___________"
+      ws["C5"] = "Check #2: ___________"
+
+      ws["A8"] = headers[0]
+      ws["B8"] = headers[1]
+      ws["C8"] = headers[2]
+      ws["D8"] = headers[3]
+      ws["E8"] = headers[4]
 
       for r in dataframe_to_rows(student_info, index=False, header=False):
           ws.append(r)
 
-      return None
-        
+      set_border(ws,"A8:E{0}".format(ws.max_row))
 
-  def save_workbook(workbook,path):
-      workbook.save(path)
-    
+      return None
+
+
 #+END_SRC
 
-#+Name: Main
-#+BEGIN_SRC python :tangle autoroster/autoroster.py :noweb yes :shebang #!/usr/bin/env python
+** TODO Weekly Report Header
+#+name: make_weekly_report
+#+BEGIN_SRC python
+#+END_SRC
+
+** DONE Make Table Boarder
+#+name: set_boarder
+#+BEGIN_SRC python
+  def set_border(ws, cell_range):
+      border = Border(left=Side(border_style='thin', color='000000'),
+                  right=Side(border_style='thin', color='000000'),
+                  top=Side(border_style='thin', color='000000'),
+                  bottom=Side(border_style='thin', color='000000'))
+
+      rows = ws[cell_range]
+      for row in rows:
+          for cell in row:
+              cell.border = border
+
+#+END_SRC
+
+** DONE Delete Blank Sheets
+#+name: delete_blank_sheets
+#+BEGIN_SRC python
+  def delete_blank_sheets(workbook):
+      sheet_to_delete = workbook.get_sheet_by_name('Sheet')
+      workbook.remove_sheet(sheet_to_delete)
+#+END_SRC
+
+** DONE Save Workbook
+#+name: save_workbook
+#+BEGIN_SRC python
+  def save_workbook(workbook,path):
+      workbook.save(path)
+      return None
+
+#+END_SRC
+
+** TODO Replace Invalid Characters
+* Commandline Interface
+#+name: commandline
+#+BEGIN_SRC python :tangle bin/commandline.py
+  import time
+  from autoroster import core
+  from argparse import ArgumentParser
+  import sys
+
+
+  def main():
+      date = time.strftime("%x", time.localtime())
+      parser = ArgumentParser(description="Generate reports from roster")
+      parser.add_argument("-f", "--file", 
+                          type=str,
+                          default=None,
+                          help="File to operate on")
+      args = parser.parse_args()
+      path = args.file
+      if path is None:
+          print("Please enter the path to file")
+          path = input("==> ")
+      else:
+          pass
+      wb = core.make_workbook()
+      exam_exports = core.read_in_roster(path)
+      exam_list = core.get_exam_list(exam_exports)
+      exams_to_process = prompt_for_exams(exam_list)
+      for exam in exams_to_process:
+          student_info = core.get_student_info(exam,exam_exports)
+          core.make_sheet(wb,exam,date,student_info)
+
+      sheet_to_delete = wb.get_sheet_by_name('Sheet')
+      wb.remove_sheet(sheet_to_delete)    
+      outpath = get_outpath()
+      core.save_workbook(wb, outpath)
+      return None
+
+
+  def prompt_for_exams(exam_list):
+      for i, item in enumerate(exam_list):
+          print(i, item)
+
+      output = []
+      run = True
+      print("Enter exam number to add it to list")
+      print("Enter exit when finished")
+      while run:
+          user_input = input("==> ")
+          if user_input.lower() == "exit":
+              run = False
+              continue
+          try:
+              output.append(exam_list[int(user_input)])
+              continue
+          except:
+              print("Error: {0} is an invalid request".format(user_input))
+
+      return output
+
+  def get_outpath():
+      default = "report" + time.strftime("%m-%d-%y",time.localtime()) + ".xlsx"
+      print("Enter name of the new file [Default: {0}]".format(default))
+      outpath = input("==> ")
+      if outpath == '':
+          outpath = default
+      return outpath
+
+
+
+  if __name__ == '__main__':
+      main()
+      sys.exit()
+#+END_SRC
+
+* Graphical User Interface
+#+name: gui
+#+BEGIN_SRC python :tangle bin/gui.py :shebang #!/usr/bin/env python
+  import tkinter
+  import tkinter.filedialog
+  import tkinter.messagebox
+  import time
+  import autoroster.core
+
+  class Application:
+
+      def __init__(self, master):
+          self.master = master
+          self.frame = tkinter.Frame(self.master)
+          self.roster_name = tkinter.Label(master, text="No Roster Selected")
+          self.roster_name.grid(row=0, column=0)
+          self.master.title("ARR")
+          self.master.resizable(False, False)
+
+          #variable = tkinter.StringVar(master)
+          #variable.set("daily") # default value
+          #self.report_text = tkinter.Label(master, text="Report Type:").grid(row=1, column=0, sticky=tkinter.W)
+
+          #self.report_type = tkinter.OptionMenu(master, variable, "daily", "weekly")
+          #self.report_type.grid(row=1, column=1)
+
+          self.open_roster_button = tkinter.Button(master, text="Open", command=self.open_roster).grid(row=0, column=1)
+
+          self.checkbox = tkinter.Listbox(master, selectmode="extended")
+          self.checkbox.grid(row=2,
+                             column=0,
+                             padx=5,
+                             pady=5,
+                             sticky= tkinter.W + tkinter.E + tkinter.S,
+                             rowspan=2,
+                             columnspan=3
+          )
+          self.generate_button = tkinter.Button(master, text="Generate Report", command=self.generate_report)
+          self.generate_button.grid(columnspan=2)
+
+      def open_roster(self):
+          filename = tkinter.filedialog.askopenfilename()
+          roster = filename.split('/')[-1]
+          self.roster_name.config(text=roster)
+
+          self.report_dataframe = autoroster.core.read_in_roster(filename)
+          exam_list = autoroster.core.get_exam_list(self.report_dataframe)
+
+          for exam in exam_list:
+              self.checkbox.insert('end', exam)
+
+      def generate_report(self):
+
+          exams = [self.checkbox.get(idx) for idx in self.checkbox.curselection()]
+          wb = autoroster.core.make_workbook()
+          date = time.strftime("%x", time.localtime())
+          for exam in exams:
+              student_info = autoroster.core.get_student_info(exam, self.report_dataframe)
+              autoroster.core.make_daily_report(wb,exam,date,student_info)
+          autoroster.core.delete_blank_sheets(wb)
+          outpath = tkinter.filedialog.asksaveasfilename()
+          autoroster.core.save_workbook(wb, outpath)
+          tkinter.messagebox.showinfo("Sucess!","File was sucessfully made!")
+
+
+
+
+
+  def do_nothing():
+      pass
+  if __name__ == '__main__':
+      root = tkinter.Tk()
+      app = Application(root)
+      root.mainloop()
+#+END_SRC
+* Autoroster
+#+name: autoroster_init
+#+BEGIN_SRC python :tangle autoroster/__init__.py 
+  #This file is intentionally left blank
+#+END_SRC
+#+name: bin_init
+#+BEGIN_SRC python :tangle bin/__init__.py 
+#+END_SRC
+
+
+#+Name: core
+#+BEGIN_SRC python :tangle autoroster/core.py :noweb yes
   import pandas
   import openpyxl
   from openpyxl.utils.dataframe import dataframe_to_rows
-  import time
-  import sys
-
+  from openpyxl.styles.borders import Border, Side
   <<pandas_functions>>
 
   <<openpyxl_functions>>
 #+END_SRC
 
-#+RESULTS: Main
-: None
+#+name: program_runner
+#+BEGIN_SRC python :tangle run.py  :shebang #!/usr/bin/env python
+  import sys
+  import tkinter
+  import bin.gui
 
-#+name: command_line
-#+BEGIN_SRC python
 
+  if __name__ == '__main__':
+      root = tkinter.Tk()
+      app = bin.gui.Application(root)
+      root.mainloop()
 #+END_SRC
