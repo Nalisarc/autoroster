@@ -21,13 +21,16 @@ def get_student_info(exam, dataframe):
     sorted_info = processed.sort_values("Student Name")
     return sorted_info
 
+def ignore_asterisk(dataframe):
+    has_asterisk = dataframe["Student Name"].str.contains("\*")
+    return dataframe[~has_asterisk]
 
 def make_workbook():
     return openpyxl.Workbook()
 
 def make_daily_report(workbook, exam, date, student_info):
     # Text Constants
-    title = "Exam Roster Report"
+    title = "Daily Exam Roster Report"
     headers = ["Student Name", "No Show", "Completed", "Check 1", "Check 2"]
     # Create workbook
     ws = workbook.create_sheet(exam)
@@ -56,6 +59,41 @@ def make_daily_report(workbook, exam, date, student_info):
     set_border(ws,"A8:E{0}".format(ws.max_row))
 
     return None
+
+
+def make_weekly_report(workbook, exam, year, student_info):
+    title = "Exam Roster Report"
+    headers = ["Student Name", "No Show", "Completed", "Check 1", "Check 2"]
+
+    ws = workbook.create_sheet(exam)
+
+    ws.column_dimensions["A"].width = 28
+    ws.column_dimensions["B"].width = 12
+    ws.column_dimensions["C"].width = 12
+    # Header Information
+    ws["A1"] = title
+    ws["B1"] = exam
+    ws["A2"] = "Pick up info"
+    ws["D2"] = "Instructor: " + "_" * 22
+    ws["A3"] = "Date: _____/_____/{0}".format(year)
+    ws["B3"] = "Exam Count: ________"
+    ws["D4"] = "Check #1: ___________"
+    ws["A5"] = "Name: " + "_" * 31
+    ws["D6"] = "Check #2: ___________"
+    ws["A7"] = "Signature: " + "_" * 38
+    # Student Info Table
+    ws["A9"] = headers[0]
+    ws["B9"] = headers[1]
+    ws["C9"] = headers[2]
+    ws["D9"] = headers[3]
+    ws["E9"] = headers[4]
+    for r in dataframe_to_rows(student_info, index=False, header=False):
+        ws.append(r)
+
+    set_border(ws,"A9:E{0}".format(ws.max_row))
+
+
+
 
 
 def set_border(ws, cell_range):

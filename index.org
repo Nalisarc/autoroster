@@ -3,6 +3,7 @@
 #+email: u0346076@utah.edu
 * TODO Readme
 #+BEGIN_SRC text :tangle README.md 
+
 #+END_SRC
 
 * TODO Licence
@@ -24,6 +25,7 @@
   <<read_in_roster>>
   <<get_exam_list>>
   <<get_student_info>>
+  <<ignore_asterisk>>
 #+END_SRC
 ** DONE Read in roster as Dataframe
 #+name: read_in_roster
@@ -56,12 +58,20 @@
       return sorted_info
 
 #+END_SRC
+** DONE Ignore Asterisk Students
+#+name: ignore_asterisk
+#+BEGIN_SRC python
+  def ignore_asterisk(dataframe):
+      has_asterisk = dataframe["Student Name"].str.contains("\*")
+      return dataframe[~has_asterisk]
+#+END_SRC
 
 * Openpyxl Functions
 #+name: openpyxl_functions
 #+BEGIN_SRC python :noweb yes 
   <<make_workbook>>
   <<make_daily_report>>
+  <<make_weekly_report>>
   <<set_boarder>>
   <<delete_blank_sheets>>
   <<save_workbook>>
@@ -79,7 +89,7 @@
 #+BEGIN_SRC python
   def make_daily_report(workbook, exam, date, student_info):
       # Text Constants
-      title = "Exam Roster Report"
+      title = "Daily Exam Roster Report"
       headers = ["Student Name", "No Show", "Completed", "Check 1", "Check 2"]
       # Create workbook
       ws = workbook.create_sheet(exam)
@@ -111,12 +121,45 @@
 
 
 #+END_SRC
-
-** TODO Weekly Report Header
+** DONE Weekly Report Header
 #+name: make_weekly_report
 #+BEGIN_SRC python
-#+END_SRC
+  def make_weekly_report(workbook, exam, year, student_info):
+      title = "Exam Roster Report"
+      headers = ["Student Name", "No Show", "Completed", "Check 1", "Check 2"]
 
+      ws = workbook.create_sheet(exam)
+
+      ws.column_dimensions["A"].width = 28
+      ws.column_dimensions["B"].width = 12
+      ws.column_dimensions["C"].width = 12
+      # Header Information
+      ws["A1"] = title
+      ws["B1"] = exam
+      ws["A2"] = "Pick up info"
+      ws["D2"] = "Instructor: " + "_" * 22
+      ws["A3"] = "Date: _____/_____/{0}".format(year)
+      ws["B3"] = "Exam Count: ________"
+      ws["D4"] = "Check #1: ___________"
+      ws["A5"] = "Name: " + "_" * 31
+      ws["D6"] = "Check #2: ___________"
+      ws["A7"] = "Signature: " + "_" * 38
+      # Student Info Table
+      ws["A9"] = headers[0]
+      ws["B9"] = headers[1]
+      ws["C9"] = headers[2]
+      ws["D9"] = headers[3]
+      ws["E9"] = headers[4]
+      for r in dataframe_to_rows(student_info, index=False, header=False):
+          ws.append(r)
+
+      set_border(ws,"A9:E{0}".format(ws.max_row))
+
+
+
+
+
+#+END_SRC
 ** DONE Make Table Boarder
 #+name: set_boarder
 #+BEGIN_SRC python
@@ -151,8 +194,9 @@
 #+END_SRC
 
 ** TODO Replace Invalid Characters
+** TODO Get scheduled count
 * Commandline Interface
-#+name: commandline
+
 #+BEGIN_SRC python :tangle bin/commandline.py
   import time
   from autoroster import core
@@ -226,7 +270,6 @@
 #+END_SRC
 
 * Graphical User Interface
-#+name: gui
 #+BEGIN_SRC python :tangle bin/gui.py :shebang #!/usr/bin/env python
   import tkinter
   import tkinter.filedialog
@@ -244,12 +287,12 @@
           self.master.title("ARR")
           self.master.resizable(False, False)
 
-          #variable = tkinter.StringVar(master)
-          #variable.set("daily") # default value
-          #self.report_text = tkinter.Label(master, text="Report Type:").grid(row=1, column=0, sticky=tkinter.W)
+          self.report_variable = tkinter.StringVar(master)
+          self.report_variable.set("daily") # default value
+          self.report_text = tkinter.Label(master, text="Report Type:").grid(row=1, column=0, sticky=tkinter.W)
 
-          #self.report_type = tkinter.OptionMenu(master, variable, "daily", "weekly")
-          #self.report_type.grid(row=1, column=1)
+          self.report_type = tkinter.OptionMenu(master, self.report_variable, "daily", "weekly")
+          self.report_type.grid(row=1, column=1)
 
           self.open_roster_button = tkinter.Button(master, text="Open", command=self.open_roster).grid(row=0, column=1)
 
@@ -277,13 +320,25 @@
               self.checkbox.insert('end', exam)
 
       def generate_report(self):
-
+          type_ = self.report_variable.get()
           exams = [self.checkbox.get(idx) for idx in self.checkbox.curselection()]
           wb = autoroster.core.make_workbook()
-          date = time.strftime("%x", time.localtime())
-          for exam in exams:
-              student_info = autoroster.core.get_student_info(exam, self.report_dataframe)
-              autoroster.core.make_daily_report(wb,exam,date,student_info)
+          if type_ == "daily":
+              date = time.strftime("%x", time.localtime())
+              for exam in exams:
+                  student_info = autoroster.core.get_student_info(exam, self.report_dataframe)
+                  asterisk_free = autoroster.core.ignore_asterisk(student_info)
+                  autoroster.core.make_daily_report(wb,exam,date,asterisk_free)
+          elif type_ == "weekly":
+              year = time.strftime("%Y", time.localtime())
+              for exam in exams:
+                  student_info = autoroster.core.get_student_info(exam, self.report_dataframe)
+                  asterisk_free = autoroster.core.ignore_asterisk(student_info)
+                  autoroster.core.make_weekly_report(wb,exam,year, asterisk_free)
+          else:
+               tkinter.messagebox.showerror("Unexpected Error", """An invalid report type was selected,
+                                            Please send an email to u0346076@utah.edu with what option you selected""")
+
           autoroster.core.delete_blank_sheets(wb)
           outpath = tkinter.filedialog.asksaveasfilename()
           autoroster.core.save_workbook(wb, outpath)
@@ -295,10 +350,15 @@
 
   def do_nothing():
       pass
-  if __name__ == '__main__':
+
+  def main():
       root = tkinter.Tk()
       app = Application(root)
       root.mainloop()
+
+  if __name__ == '__main__':
+      main()
+      sys.exit()
 #+END_SRC
 * Autoroster
 #+name: autoroster_init

@@ -15,12 +15,12 @@ class Application:
         self.master.title("ARR")
         self.master.resizable(False, False)
 
-        #variable = tkinter.StringVar(master)
-        #variable.set("daily") # default value
-        #self.report_text = tkinter.Label(master, text="Report Type:").grid(row=1, column=0, sticky=tkinter.W)
+        self.report_variable = tkinter.StringVar(master)
+        self.report_variable.set("daily") # default value
+        self.report_text = tkinter.Label(master, text="Report Type:").grid(row=1, column=0, sticky=tkinter.W)
 
-        #self.report_type = tkinter.OptionMenu(master, variable, "daily", "weekly")
-        #self.report_type.grid(row=1, column=1)
+        self.report_type = tkinter.OptionMenu(master, self.report_variable, "daily", "weekly")
+        self.report_type.grid(row=1, column=1)
 
         self.open_roster_button = tkinter.Button(master, text="Open", command=self.open_roster).grid(row=0, column=1)
 
@@ -48,13 +48,25 @@ class Application:
             self.checkbox.insert('end', exam)
 
     def generate_report(self):
-
+        type_ = self.report_variable.get()
         exams = [self.checkbox.get(idx) for idx in self.checkbox.curselection()]
         wb = autoroster.core.make_workbook()
-        date = time.strftime("%x", time.localtime())
-        for exam in exams:
-            student_info = autoroster.core.get_student_info(exam, self.report_dataframe)
-            autoroster.core.make_daily_report(wb,exam,date,student_info)
+        if type_ == "daily":
+            date = time.strftime("%x", time.localtime())
+            for exam in exams:
+                student_info = autoroster.core.get_student_info(exam, self.report_dataframe)
+                asterisk_free = autoroster.core.ignore_asterisk(student_info)
+                autoroster.core.make_daily_report(wb,exam,date,asterisk_free)
+        elif type_ == "weekly":
+            year = time.strftime("%Y", time.localtime())
+            for exam in exams:
+                student_info = autoroster.core.get_student_info(exam, self.report_dataframe)
+                asterisk_free = autoroster.core.ignore_asterisk(student_info)
+                autoroster.core.make_weekly_report(wb,exam,year, asterisk_free)
+        else:
+             tkinter.messagebox.showerror("Unexpected Error", """An invalid report type was selected,
+                                          Please send an email to u0346076@utah.edu with what option you selected""")
+
         autoroster.core.delete_blank_sheets(wb)
         outpath = tkinter.filedialog.asksaveasfilename()
         autoroster.core.save_workbook(wb, outpath)
@@ -66,7 +78,12 @@ class Application:
 
 def do_nothing():
     pass
-if __name__ == '__main__':
+
+def main():
     root = tkinter.Tk()
     app = Application(root)
     root.mainloop()
+
+if __name__ == '__main__':
+    main()
+    sys.exit()
