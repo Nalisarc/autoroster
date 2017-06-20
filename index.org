@@ -3,14 +3,23 @@
 #+email: u0346076@utah.edu
 * TODO Readme
 #+BEGIN_SRC text :tangle README.md 
-
+  Auto Roster Report (ARR)
+  Is a program for automating the creation of end of day and week reports for paper based exams.
+  The inital reports are gathered from registerblast in the form of an exam roster report.
+  This downloaded as an xlsx file.
+  Arr uses both a gui and a cli depending on the usage case.
+  For a formal documentation of the code please refer to index.org
 #+END_SRC
 
 * TODO Licence
 #+BEGIN_SRC text :LICENCE.md 
+  Ask me before you use it
 #+END_SRC
 
 * Requirements For Development
+Arr uses tkinter for its gui, along with a few built in libraries.
+Requirements.txt only covers 3rd party modules.
+
 #+name: requirements
 #+BEGIN_SRC text :tangle requirements.txt 
   pandas
@@ -54,6 +63,7 @@
           dataframe, columns=["Student Name", "No Show", "Completed"])
       by_exam = dataframe["SP Exam"] == exam
       processed = student_info[by_exam]
+      processed["Student Name"] = map(lambda x: x.upper(), processed["Student Name"]) #Upper case all names
       sorted_info = processed.sort_values("Student Name")
       return sorted_info
 
@@ -95,7 +105,7 @@
       ws = workbook.create_sheet(exam)
 
       # Column widths
-      ws.column_dimensions["A"].width = 19
+      ws.column_dimensions["A"].width = 28
       ws.column_dimensions["C"].width = 12
       ws.column_dimensions["D"].width = 12
       # Sets up people field
@@ -195,6 +205,7 @@
 
 ** TODO Replace Invalid Characters
 ** TODO Get scheduled count
+** TODO Choose column to search
 * Commandline Interface
 
 #+BEGIN_SRC python :tangle bin/commandline.py
@@ -277,6 +288,8 @@
   import time
   import autoroster.core
 
+  FILEOPENOPTIONS = dict(defaultextension='.xlsx',
+                         filetypes=[("All Files",'*.*'), ('Excel File','*.xlsx')])
   class Application:
 
       def __init__(self, master):
@@ -309,7 +322,7 @@
           self.generate_button.grid(columnspan=2)
 
       def open_roster(self):
-          filename = tkinter.filedialog.askopenfilename()
+          filename = tkinter.filedialog.askopenfilename(**FILEOPENOPTIONS)
           roster = filename.split('/')[-1]
           self.roster_name.config(text=roster)
 
@@ -340,7 +353,7 @@
                                             Please send an email to u0346076@utah.edu with what option you selected""")
 
           autoroster.core.delete_blank_sheets(wb)
-          outpath = tkinter.filedialog.asksaveasfilename()
+          outpath = tkinter.filedialog.asksaveasfilename(**FILEOPENOPTIONS)
           autoroster.core.save_workbook(wb, outpath)
           tkinter.messagebox.showinfo("Sucess!","File was sucessfully made!")
 

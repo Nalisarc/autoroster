@@ -18,6 +18,7 @@ def get_student_info(exam, dataframe):
         dataframe, columns=["Student Name", "No Show", "Completed"])
     by_exam = dataframe["SP Exam"] == exam
     processed = student_info[by_exam]
+    processed["Student Name"] = map(lambda x: x.upper(), processed["Student Name"]) #Upper case all names
     sorted_info = processed.sort_values("Student Name")
     return sorted_info
 
@@ -36,7 +37,7 @@ def make_daily_report(workbook, exam, date, student_info):
     ws = workbook.create_sheet(exam)
 
     # Column widths
-    ws.column_dimensions["A"].width = 19
+    ws.column_dimensions["A"].width = 28
     ws.column_dimensions["C"].width = 12
     ws.column_dimensions["D"].width = 12
     # Sets up people field

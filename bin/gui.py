@@ -5,6 +5,8 @@ import tkinter.messagebox
 import time
 import autoroster.core
 
+FILEOPENOPTIONS = dict(defaultextension='.xlsx',
+                       filetypes=[("All Files",'*.*'), ('Excel File','*.xlsx')])
 class Application:
 
     def __init__(self, master):
@@ -37,7 +39,7 @@ class Application:
         self.generate_button.grid(columnspan=2)
 
     def open_roster(self):
-        filename = tkinter.filedialog.askopenfilename()
+        filename = tkinter.filedialog.askopenfilename(**FILEOPENOPTIONS)
         roster = filename.split('/')[-1]
         self.roster_name.config(text=roster)
 
@@ -68,7 +70,7 @@ class Application:
                                           Please send an email to u0346076@utah.edu with what option you selected""")
 
         autoroster.core.delete_blank_sheets(wb)
-        outpath = tkinter.filedialog.asksaveasfilename()
+        outpath = tkinter.filedialog.asksaveasfilename(**FILEOPENOPTIONS)
         autoroster.core.save_workbook(wb, outpath)
         tkinter.messagebox.showinfo("Sucess!","File was sucessfully made!")
 
