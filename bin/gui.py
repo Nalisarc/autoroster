@@ -6,7 +6,7 @@ import time
 import autoroster.core
 
 FILEOPENOPTIONS = dict(defaultextension='.xlsx',
-                       filetypes=[("All Files",'*.*'), ('Excel File','*.xlsx')])
+                       filetypes=[('Excel File','*.xlsx'),("All Files",'*.*')])
 class Application:
 
     def __init__(self, master):

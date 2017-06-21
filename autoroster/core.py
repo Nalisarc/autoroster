@@ -18,7 +18,7 @@ def get_student_info(exam, dataframe):
         dataframe, columns=["Student Name", "No Show", "Completed"])
     by_exam = dataframe["SP Exam"] == exam
     processed = student_info[by_exam]
-    processed["Student Name"] = map(lambda x: x.upper(), processed["Student Name"]) #Upper case all names
+    processed["Student Name"] = processed["Student Name"].str.upper()
     sorted_info = processed.sort_values("Student Name")
     return sorted_info
 
