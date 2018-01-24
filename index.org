@@ -1,27 +1,18 @@
 #+title: Auto Roster Report Maker
 #+Author: Daniel Alexander Smith
 #+email: u0346076@utah.edu
-* TODO Readme
-#+BEGIN_SRC text :tangle README.md 
-  Auto Roster Report (ARR)
-  Is a program for automating the creation of end of day and week reports for paper based exams.
-  The inital reports are gathered from registerblast in the form of an exam roster report.
-  This downloaded as an xlsx file.
-  Arr uses both a gui and a cli depending on the usage case.
-  For a formal documentation of the code please refer to index.org
-#+END_SRC
+* TODO Readme                                                        :Readme:
+Autoroster is a program used to generate
 
-* TODO Licence
-#+BEGIN_SRC text :LICENCE.md 
+* TODO Licence                                                      :Licence:
+#+BEGIN_SRC text :LICENCE.md
   Ask me before you use it
 #+END_SRC
 
 * Requirements For Development
-Arr uses tkinter for its gui, along with a few built in libraries.
-Requirements.txt only covers 3rd party modules.
-
+Autoroster uses pyqt5 fo the gui and
 #+name: requirements
-#+BEGIN_SRC text :tangle requirements.txt 
+#+BEGIN_SRC text :tangle requirements.txt
   pandas
   numpy
   xlrd
@@ -29,13 +20,7 @@ Requirements.txt only covers 3rd party modules.
 #+END_SRC
 
 * Pandas Functions
-#+name: pandas_functions
-#+BEGIN_SRC python     :noweb yes 
-  <<read_in_roster>>
-  <<get_exam_list>>
-  <<get_student_info>>
-  <<ignore_asterisk>>
-#+END_SRC
+
 ** DONE Read in roster as Dataframe
 #+name: read_in_roster
 #+BEGIN_SRC python
@@ -69,23 +54,23 @@ Requirements.txt only covers 3rd party modules.
 
 #+END_SRC
 ** DONE Ignore Asterisk Students
+
 #+name: ignore_asterisk
 #+BEGIN_SRC python
   def ignore_asterisk(dataframe):
       has_asterisk = dataframe["Student Name"].str.contains("\*")
       return dataframe[~has_asterisk]
 #+END_SRC
-
-* Openpyxl Functions
-#+name: openpyxl_functions
-#+BEGIN_SRC python :noweb yes 
-  <<make_workbook>>
-  <<make_daily_report>>
-  <<make_weekly_report>>
-  <<set_boarder>>
-  <<delete_blank_sheets>>
-  <<save_workbook>>
+** Noweb stuff                                                     :noexport:
+#+name: pandas_functions
+#+BEGIN_SRC python     :noweb yes
+  <<read_in_roster>>
+  <<get_exam_list>>
+  <<get_student_info>>
+  <<ignore_asterisk>>
 #+END_SRC
+* Openpyxl Functions
+
 ** DONE Make Workbook
 #+name: make_workbook
 #+BEGIN_SRC python
@@ -206,8 +191,17 @@ Requirements.txt only covers 3rd party modules.
 ** TODO Replace Invalid Characters
 ** TODO Get scheduled count
 ** TODO Choose column to search
+** Noweb stuff                                                     :noexport:
+#+name: openpyxl_functions
+#+BEGIN_SRC python :noweb yes
+  <<make_workbook>>
+  <<make_daily_report>>
+  <<make_weekly_report>>
+  <<set_boarder>>
+  <<delete_blank_sheets>>
+  <<save_workbook>>
+#+END_SRC
 * Commandline Interface
-
 #+BEGIN_SRC python :tangle bin/commandline.py
   import time
   from autoroster import core
@@ -218,7 +212,7 @@ Requirements.txt only covers 3rd party modules.
   def main():
       date = time.strftime("%x", time.localtime())
       parser = ArgumentParser(description="Generate reports from roster")
-      parser.add_argument("-f", "--file", 
+      parser.add_argument("-f", "--file",
                           type=str,
                           default=None,
                           help="File to operate on")
@@ -238,7 +232,7 @@ Requirements.txt only covers 3rd party modules.
           core.make_sheet(wb,exam,date,student_info)
 
       sheet_to_delete = wb.get_sheet_by_name('Sheet')
-      wb.remove_sheet(sheet_to_delete)    
+      wb.remove_sheet(sheet_to_delete)
       outpath = get_outpath()
       core.save_workbook(wb, outpath)
       return None
@@ -281,100 +275,8 @@ Requirements.txt only covers 3rd party modules.
 #+END_SRC
 
 * Graphical User Interface
-#+BEGIN_SRC python :tangle bin/gui.py :shebang #!/usr/bin/env python
-  import tkinter
-  import tkinter.filedialog
-  import tkinter.messagebox
-  import time
-  import autoroster.core
-
-  FILEOPENOPTIONS = dict(defaultextension='.xlsx',
-                         filetypes=[('Excel File','*.xlsx'),("All Files",'*.*')])
-  class Application:
-
-      def __init__(self, master):
-          self.master = master
-          self.frame = tkinter.Frame(self.master)
-          self.roster_name = tkinter.Label(master, text="No Roster Selected")
-          self.roster_name.grid(row=0, column=0)
-          self.master.title("ARR")
-          self.master.resizable(False, False)
-
-          self.report_variable = tkinter.StringVar(master)
-          self.report_variable.set("daily") # default value
-          self.report_text = tkinter.Label(master, text="Report Type:").grid(row=1, column=0, sticky=tkinter.W)
-
-          self.report_type = tkinter.OptionMenu(master, self.report_variable, "daily", "weekly")
-          self.report_type.grid(row=1, column=1)
-
-          self.open_roster_button = tkinter.Button(master, text="Open", command=self.open_roster).grid(row=0, column=1)
-
-          self.checkbox = tkinter.Listbox(master, selectmode="extended")
-          self.checkbox.grid(row=2,
-                             column=0,
-                             padx=5,
-                             pady=5,
-                             sticky= tkinter.W + tkinter.E + tkinter.S,
-                             rowspan=2,
-                             columnspan=3
-          )
-          self.generate_button = tkinter.Button(master, text="Generate Report", command=self.generate_report)
-          self.generate_button.grid(columnspan=2)
-
-      def open_roster(self):
-          filename = tkinter.filedialog.askopenfilename(**FILEOPENOPTIONS)
-          roster = filename.split('/')[-1]
-          self.roster_name.config(text=roster)
-
-          self.report_dataframe = autoroster.core.read_in_roster(filename)
-          exam_list = autoroster.core.get_exam_list(self.report_dataframe)
-
-          for exam in exam_list:
-              self.checkbox.insert('end', exam)
-
-      def generate_report(self):
-          type_ = self.report_variable.get()
-          exams = [self.checkbox.get(idx) for idx in self.checkbox.curselection()]
-          wb = autoroster.core.make_workbook()
-          if type_ == "daily":
-              date = time.strftime("%x", time.localtime())
-              for exam in exams:
-                  student_info = autoroster.core.get_student_info(exam, self.report_dataframe)
-                  asterisk_free = autoroster.core.ignore_asterisk(student_info)
-                  autoroster.core.make_daily_report(wb,exam,date,asterisk_free)
-          elif type_ == "weekly":
-              year = time.strftime("%Y", time.localtime())
-              for exam in exams:
-                  student_info = autoroster.core.get_student_info(exam, self.report_dataframe)
-                  asterisk_free = autoroster.core.ignore_asterisk(student_info)
-                  autoroster.core.make_weekly_report(wb,exam,year, asterisk_free)
-          else:
-               tkinter.messagebox.showerror("Unexpected Error", """An invalid report type was selected,
-                                            Please send an email to u0346076@utah.edu with what option you selected""")
-
-          autoroster.core.delete_blank_sheets(wb)
-          outpath = tkinter.filedialog.asksaveasfilename(**FILEOPENOPTIONS)
-          autoroster.core.save_workbook(wb, outpath)
-          tkinter.messagebox.showinfo("Sucess!","File was sucessfully made!")
-
-
-
-
-
-  def do_nothing():
-      pass
-
-  def main():
-      root = tkinter.Tk()
-      app = Application(root)
-      root.mainloop()
-
-  if __name__ == '__main__':
-      main()
-      sys.exit()
-#+END_SRC
 #+name: qt-ver
-#+BEGIN_SRC python :shebang #!/usr/bin/env python3 :tangle qt.py 
+#+BEGIN_SRC python :shebang #!/usr/bin/env python3 :tangle qt.py
   #!/usr/bin/env python3
   from autoroster import core
   from PyQt5 import QtGui, QtWidgets
@@ -488,13 +390,13 @@ Requirements.txt only covers 3rd party modules.
       sys.exit()
 #+END_SRC
 
-* Autoroster
+* Wrapping and stuff                                               :noexport:
 #+name: autoroster_init
-#+BEGIN_SRC python :tangle autoroster/__init__.py 
+#+BEGIN_SRC python :tangle autoroster/__init__.py
   #This file is intentionally left blank
 #+END_SRC
 #+name: bin_init
-#+BEGIN_SRC python :tangle bin/__init__.py 
+#+BEGIN_SRC python :tangle bin/__init__.py
 #+END_SRC
 
 
@@ -507,17 +409,4 @@ Requirements.txt only covers 3rd party modules.
   <<pandas_functions>>
 
   <<openpyxl_functions>>
-#+END_SRC
-
-#+name: program_runner
-#+BEGIN_SRC python :tangle run.py  :shebang #!/usr/bin/env python
-  import sys
-  import tkinter
-  import bin.gui
-
-
-  if __name__ == '__main__':
-      root = tkinter.Tk()
-      app = bin.gui.Application(root)
-      root.mainloop()
 #+END_SRC
