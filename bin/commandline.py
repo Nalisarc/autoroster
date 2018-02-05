@@ -7,7 +7,7 @@ import sys
 def main():
     date = time.strftime("%x", time.localtime())
     parser = ArgumentParser(description="Generate reports from roster")
-    parser.add_argument("-f", "--file", 
+    parser.add_argument("-f", "--file",
                         type=str,
                         default=None,
                         help="File to operate on")
@@ -27,7 +27,7 @@ def main():
         core.make_sheet(wb,exam,date,student_info)
 
     sheet_to_delete = wb.get_sheet_by_name('Sheet')
-    wb.remove_sheet(sheet_to_delete)    
+    wb.remove_sheet(sheet_to_delete)
     outpath = get_outpath()
     core.save_workbook(wb, outpath)
     return None

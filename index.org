@@ -1,412 +1,91 @@
-#+title: Auto Roster Report Maker
+DSMITH12862#+title: Auto Roster Report Maker
 #+Author: Daniel Alexander Smith
 #+email: u0346076@utah.edu
-* TODO Readme                                                        :Readme:
-Autoroster is a program used to generate
+#+TAGS: readme(r) noexport(n)
+#+STARTUP: content
 
-* TODO Licence                                                      :Licence:
-#+BEGIN_SRC text :LICENCE.md
-  Ask me before you use it
-#+END_SRC
+* TODO Readme                                                        :readme:
+Autoroster is a program used to generate daily and weekly roster reports.
+
+
+* TODO Licence                                                      :licence:
+Right now this program does not have a license. I'll most likely give it either a GPL or an LGPL.
+However that isn't a priority at the moment. Assume that you are not allowed to use it, unless I've told you it's okay.
 
 * Requirements For Development
-Autoroster uses pyqt5 fo the gui and
+Autoroster uses pyqt5 for the gui.
+I'm not sure if xlrd is still nessisary, if it's not I'm going to remove it.
 #+name: requirements
 #+BEGIN_SRC text :tangle requirements.txt
+  pyqt5
   pandas
   numpy
   xlrd
   openpyxl
 #+END_SRC
 
-* Pandas Functions
 
-** DONE Read in roster as Dataframe
-#+name: read_in_roster
+
+
+** Data input and Processing
+
+*** Read in workbook
+#+name: open_roster
 #+BEGIN_SRC python
-  def read_in_roster(path):
-      """reads in the roster report, and skips to the headers """
-      df = pandas.read_excel(path, skiprows=2)
-      return df
+import openpyxl
+import pandas
 
-#+END_SRC
-** DONE Get exam list
-#+name: get_exam_list
-#+BEGIN_SRC python
-  def get_exam_list(dataframe):
-      raw_exam_list = list(dataframe["SP Exam"].unique())
-      exam_list = [exam for exam in raw_exam_list if str(
-          type(exam)) == "<class 'str'>"]
-      exam_list.sort()
-      return exam_list
-#+END_SRC
-** DONE Get Student Info
-#+name: get_student_info
-#+BEGIN_SRC python
-  def get_student_info(exam, dataframe):
-      student_info = pandas.DataFrame(
-          dataframe, columns=["Student Name", "No Show", "Completed"])
-      by_exam = dataframe["SP Exam"] == exam
-      processed = student_info[by_exam]
-      processed["Student Name"] = processed["Student Name"].str.upper()
-      sorted_info = processed.sort_values("Student Name")
-      return sorted_info
 
-#+END_SRC
-** DONE Ignore Asterisk Students
+def open_roster(path, skip=2):
+    wb = openpyxl.load_workbook(path)
+    ws = wb.active
+    data = ws.values
 
-#+name: ignore_asterisk
-#+BEGIN_SRC python
-  def ignore_asterisk(dataframe):
-      has_asterisk = dataframe["Student Name"].str.contains("\*")
-      return dataframe[~has_asterisk]
-#+END_SRC
-** Noweb stuff                                                     :noexport:
-#+name: pandas_functions
-#+BEGIN_SRC python     :noweb yes
-  <<read_in_roster>>
-  <<get_exam_list>>
-  <<get_student_info>>
-  <<ignore_asterisk>>
-#+END_SRC
-* Openpyxl Functions
+    for s in range(skip):
+        next(data)
 
-** DONE Make Workbook
-#+name: make_workbook
-#+BEGIN_SRC python
-  def make_workbook():
-      return openpyxl.Workbook()
+    cols = next(data)[1:]
+    data = list(data)
+    idx = [r[0] for r in data]
+    data = (islice(r, 1, None) for r in data)
+    df = pandas.DataFrame(data,index=idx,columns=cols)
+
+    return df
+#+END_SRC
+*** Tests
+#+name: datainp-tests
+#+BEGIN_SRC python :tangle tests/test_datainp.py
+import autoroster.core
+
+def test_can_open_roster():
+    testr = autoroster.core.open_roster("./testrosters/testrosterblank.xlsx")
+
+def test_roster_is_data_frame():
+    testr = autoroster.core.open_roster("./testrosters/testrosterblank.xlsx")
+    assert str(type(testr)) == "<class 'pandas.core.frame.DataFrame'>"
+
+def test_roster_contains_proper_header():
+    testr = autoroster.core.open_roster("./testrosters/testrosterblank.xlsx")
+    assert "Student Name" in list(testr)
 
 #+END_SRC
 
-** DONE Daily Report Header
-#+name: make_daily_report
-#+BEGIN_SRC python
-  def make_daily_report(workbook, exam, date, student_info):
-      # Text Constants
-      title = "Daily Exam Roster Report"
-      headers = ["Student Name", "No Show", "Completed", "Check 1", "Check 2"]
-      # Create workbook
-      ws = workbook.create_sheet(exam)
+** Output
 
-      # Column widths
-      ws.column_dimensions["A"].width = 28
-      ws.column_dimensions["C"].width = 12
-      ws.column_dimensions["D"].width = 12
-      # Sets up people field
-      ws["A1"] = title
-      ws["B1"] = exam
-      ws["A3"] = "Date: " + date
-      ws["D3"] = "Exam Count: ________"
-      ws["A5"] = "Check #1: ___________"
-      ws["C5"] = "Check #2: ___________"
+** UI
 
-      ws["A8"] = headers[0]
-      ws["B8"] = headers[1]
-      ws["C8"] = headers[2]
-      ws["D8"] = headers[3]
-      ws["E8"] = headers[4]
+** Main
 
-      for r in dataframe_to_rows(student_info, index=False, header=False):
-          ws.append(r)
-
-      set_border(ws,"A8:E{0}".format(ws.max_row))
-
-      return None
-
-
-#+END_SRC
-** DONE Weekly Report Header
-#+name: make_weekly_report
-#+BEGIN_SRC python
-  def make_weekly_report(workbook, exam, year, student_info):
-      title = "Exam Roster Report"
-      headers = ["Student Name", "No Show", "Completed", "Check 1", "Check 2"]
-
-      ws = workbook.create_sheet(exam)
-
-      ws.column_dimensions["A"].width = 28
-      ws.column_dimensions["B"].width = 12
-      ws.column_dimensions["C"].width = 12
-      # Header Information
-      ws["A1"] = title
-      ws["B1"] = exam
-      ws["A2"] = "Pick up info"
-      ws["D2"] = "Instructor: " + "_" * 22
-      ws["A3"] = "Date: _____/_____/{0}".format(year)
-      ws["B3"] = "Exam Count: ________"
-      ws["D4"] = "Check #1: ___________"
-      ws["A5"] = "Name: " + "_" * 31
-      ws["D6"] = "Check #2: ___________"
-      ws["A7"] = "Signature: " + "_" * 38
-      # Student Info Table
-      ws["A9"] = headers[0]
-      ws["B9"] = headers[1]
-      ws["C9"] = headers[2]
-      ws["D9"] = headers[3]
-      ws["E9"] = headers[4]
-      for r in dataframe_to_rows(student_info, index=False, header=False):
-          ws.append(r)
-
-      set_border(ws,"A9:E{0}".format(ws.max_row))
-
-
-
-
-
-#+END_SRC
-** DONE Make Table Boarder
-#+name: set_boarder
-#+BEGIN_SRC python
-  def set_border(ws, cell_range):
-      border = Border(left=Side(border_style='thin', color='000000'),
-                  right=Side(border_style='thin', color='000000'),
-                  top=Side(border_style='thin', color='000000'),
-                  bottom=Side(border_style='thin', color='000000'))
-
-      rows = ws[cell_range]
-      for row in rows:
-          for cell in row:
-              cell.border = border
-
-#+END_SRC
-
-** DONE Delete Blank Sheets
-#+name: delete_blank_sheets
-#+BEGIN_SRC python
-  def delete_blank_sheets(workbook):
-      sheet_to_delete = workbook.get_sheet_by_name('Sheet')
-      workbook.remove_sheet(sheet_to_delete)
-#+END_SRC
-
-** DONE Save Workbook
-#+name: save_workbook
-#+BEGIN_SRC python
-  def save_workbook(workbook,path):
-      workbook.save(path)
-      return None
-
-#+END_SRC
-
-** TODO Replace Invalid Characters
-** TODO Get scheduled count
-** TODO Choose column to search
-** Noweb stuff                                                     :noexport:
-#+name: openpyxl_functions
-#+BEGIN_SRC python :noweb yes
-  <<make_workbook>>
-  <<make_daily_report>>
-  <<make_weekly_report>>
-  <<set_boarder>>
-  <<delete_blank_sheets>>
-  <<save_workbook>>
-#+END_SRC
-* Commandline Interface
-#+BEGIN_SRC python :tangle bin/commandline.py
-  import time
-  from autoroster import core
-  from argparse import ArgumentParser
-  import sys
-
-
-  def main():
-      date = time.strftime("%x", time.localtime())
-      parser = ArgumentParser(description="Generate reports from roster")
-      parser.add_argument("-f", "--file",
-                          type=str,
-                          default=None,
-                          help="File to operate on")
-      args = parser.parse_args()
-      path = args.file
-      if path is None:
-          print("Please enter the path to file")
-          path = input("==> ")
-      else:
-          pass
-      wb = core.make_workbook()
-      exam_exports = core.read_in_roster(path)
-      exam_list = core.get_exam_list(exam_exports)
-      exams_to_process = prompt_for_exams(exam_list)
-      for exam in exams_to_process:
-          student_info = core.get_student_info(exam,exam_exports)
-          core.make_sheet(wb,exam,date,student_info)
-
-      sheet_to_delete = wb.get_sheet_by_name('Sheet')
-      wb.remove_sheet(sheet_to_delete)
-      outpath = get_outpath()
-      core.save_workbook(wb, outpath)
-      return None
-
-
-  def prompt_for_exams(exam_list):
-      for i, item in enumerate(exam_list):
-          print(i, item)
-
-      output = []
-      run = True
-      print("Enter exam number to add it to list")
-      print("Enter exit when finished")
-      while run:
-          user_input = input("==> ")
-          if user_input.lower() == "exit":
-              run = False
-              continue
-          try:
-              output.append(exam_list[int(user_input)])
-              continue
-          except:
-              print("Error: {0} is an invalid request".format(user_input))
-
-      return output
-
-  def get_outpath():
-      default = "report" + time.strftime("%m-%d-%y",time.localtime()) + ".xlsx"
-      print("Enter name of the new file [Default: {0}]".format(default))
-      outpath = input("==> ")
-      if outpath == '':
-          outpath = default
-      return outpath
-
-
-
-  if __name__ == '__main__':
-      main()
-      sys.exit()
-#+END_SRC
-
-* Graphical User Interface
-#+name: qt-ver
-#+BEGIN_SRC python :shebang #!/usr/bin/env python3 :tangle qt.py
-  #!/usr/bin/env python3
-  from autoroster import core
-  from PyQt5 import QtGui, QtWidgets
-  import sys
-  import time
-
-
-  class MainWindow(QtWidgets.QWidget):
-
-      def __init__(self):
-          super(MainWindow, self).__init__()
-
-          self.initUI()
-
-      def initUI(self):
-          grid = QtWidgets.QGridLayout()
-
-          self.roster_name = QtWidgets.QLabel('No Roster Selected')
-          self.roster_list = QtWidgets.QListWidget()
-          self.roster_list.setSelectionMode(
-              QtWidgets.QAbstractItemView.ExtendedSelection)
-
-          report_type_label = QtWidgets.QLabel("Report Type: ")
-          self.report_type = QtWidgets.QComboBox()
-          self.report_type.addItem("Daily")
-          self.report_type.addItem("Weekly")
-
-          open_button = QtWidgets.QPushButton("Open")
-          open_button.clicked.connect(self.open_roster)
-
-          generate_button = QtWidgets.QPushButton("Generate")
-          generate_button.clicked.connect(self.generate_report)
-
-          # Set grid layout
-          grid.addWidget(self.roster_name, 0, 0)
-          grid.addWidget(open_button, 0, 1)
-          grid.addWidget(report_type_label, 1, 0)
-          grid.addWidget(self.report_type, 1, 1)
-          grid.addWidget(self.roster_list, 2, 0, 2, 1)
-          grid.addWidget(generate_button, 4, 0, 2, 1)
-
-          self.setLayout(grid)
-          self.setWindowTitle('AutoRoster')
-          self.show()
-
-      def open_roster(self):
-          filename = QtWidgets.QFileDialog.getOpenFileName(
-              self, 'Open File', "", "Excel Files (*.xlsx)")[0]
-          if filename:
-              self.roster_list.clear()
-              shortend = filename.split('/')[-1]
-              self.roster_name.setText(shortend)
-              self.report_dataframe = core.read_in_roster(filename)
-              exam_list = core.get_exam_list(self.report_dataframe)
-              for exam in exam_list:
-                  self.roster_list.addItem(exam)
-          else:
-              self.roster_name.setText('No Roster Selected')
-
-      def generate_report(self):
-          selection = self.roster_list.selectedItems()
-          if selection:
-              # selection is a list of object, change into strings
-              selection = [i.text() for i in selection]
-              wb = core.make_workbook()
-
-              if str(self.report_type.currentText()) == 'Daily':
-                  default = time.strftime(
-                      "Daily %m-%d-%y.xlsx", time.localtime())
-                  date = time.strftime("%x", time.localtime())
-                  for exam in selection:
-                      student_info = core.get_student_info(
-                          exam, self.report_dataframe)
-                      asterisk_free = core.ignore_asterisk(student_info)
-                      core.make_daily_report(wb, exam, date, asterisk_free)
-
-              elif str(self.report_type.currentText()) == 'Weekly':
-                  default = time.strftime(
-                      "Weekly %m-%d-%y.xlsx", time.localtime())
-                  year = time.strftime("%Y", time.localtime())
-                  for exam in selection:
-                      student_info = core.get_student_info(
-                          exam, self.report_dataframe)
-                      asterisk_free = core.ignore_asterisk(student_info)
-                      core.make_weekly_report(wb, exam, year, asterisk_free)
-
-              else:
-                  QtWidgets.QMessageBox.critical(
-                      self, "Error", "Error Unexpected report type selected, please contact Daniel at u0346076@utah.edu")
-
-              core.delete_blank_sheets(wb)
-              filename = QtWidgets.QFileDialog.getSaveFileName(
-                  self, 'Save File', default, "Excel Files (*.xlsx)")[0]
-              core.save_workbook(wb, filename)
-              QtWidgets.QMessageBox.information(
-                  self, "Message", "File successfully created")
-
-          else:
-              QtWidgets.QMessageBox.critical(self, "Error", "No Exam Selected")
-
-
-  def main():
-
-      app = QtWidgets.QApplication([])
-      ex = MainWindow()
-      sys.exit(app.exec_())
-
-
-  if __name__ == '__main__':
-      main()
-      sys.exit()
-#+END_SRC
-
-* Wrapping and stuff                                               :noexport:
-#+name: autoroster_init
-#+BEGIN_SRC python :tangle autoroster/__init__.py
-  #This file is intentionally left blank
-#+END_SRC
-#+name: bin_init
-#+BEGIN_SRC python :tangle bin/__init__.py
-#+END_SRC
-
-
-#+Name: core
 #+BEGIN_SRC python :tangle autoroster/core.py :noweb yes
-  import pandas
-  import openpyxl
-  from openpyxl.utils.dataframe import dataframe_to_rows
-  from openpyxl.styles.borders import Border, Side
-  <<pandas_functions>>
-
-  <<openpyxl_functions>>
+<<open_roster>>
 #+END_SRC
+
+** Misc
+To get elpy to work properly, the following packages.
+#+name: elpy-packs
+#+BEGIN_EXAMPLE
+  jedi
+  yapf
+  Autopep8
+  flake8
+#+END_EXAMPLE

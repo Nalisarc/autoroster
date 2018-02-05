@@ -2,3 +2,4 @@ test_rosters
 __pycache__/
 *.pyc
 /.python-version
+/index.old
