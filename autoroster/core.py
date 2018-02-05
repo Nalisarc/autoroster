@@ -10,7 +10,7 @@ def open_roster(path, skip=2):
     for s in range(skip):
         next(data)
 
-    cols = next(data)[1:]
+    cols = next(data)
     data = list(data)
     idx = [r[0] for r in data]
     data = (islice(r, 1, None) for r in data)
