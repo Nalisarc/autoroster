@@ -2,6 +2,7 @@ import openpyxl
 import pandas
 
 
+
 def open_roster(path, skip=2):
     wb = openpyxl.load_workbook(path)
     ws = wb.active
@@ -11,9 +12,6 @@ def open_roster(path, skip=2):
         next(data)
 
     cols = next(data)
-    data = list(data)
-    idx = [r[0] for r in data]
-    data = (islice(r, 1, None) for r in data)
-    df = pandas.DataFrame(data,index=idx,columns=cols)
+    df = pandas.DataFrame(list(data), columns=cols)
 
     return df

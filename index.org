@@ -1,4 +1,4 @@
-DSMITH12862#+title: Auto Roster Report Maker
+#+title: Auto Roster Report Maker
 #+Author: Daniel Alexander Smith
 #+email: u0346076@utah.edu
 #+TAGS: readme(r) noexport(n)
@@ -32,9 +32,6 @@ I'm not sure if xlrd is still nessisary, if it's not I'm going to remove it.
 *** Read in workbook
 #+name: open_roster
 #+BEGIN_SRC python
-import openpyxl
-import pandas
-
 
 def open_roster(path, skip=2):
     wb = openpyxl.load_workbook(path)
@@ -45,14 +42,13 @@ def open_roster(path, skip=2):
         next(data)
 
     cols = next(data)
-    data = list(data)
-    df = pandas.DataFrame(data,index=idx,columns=cols)
+    df = pandas.DataFrame(list(data), columns=cols)
 
     return df
 #+END_SRC
-*** Tests
-#+name: datainp-tests
-#+BEGIN_SRC python :tangle tests/test_datainp.py
+**** Tests
+ #+name: datainp-tests
+ #+BEGIN_SRC python :tangle tests/test_datainp.py
 import autoroster.core
 
 def test_can_open_roster():
@@ -66,6 +62,24 @@ def test_roster_contains_proper_header():
     testr = autoroster.core.open_roster("./testrosters/testrosterblank.xlsx")
     assert "Student Name" in list(testr)
 
+ #+END_SRC
+*** Filter exams
+#+name: get_exam_list
+#+BEGIN_SRC python
+#+END_SRC
+
+**** Tests
+#+BEGIN_SRC python :tangle tests/test_filter_input.py
+import autoroster.core
+from nose.tools import with_setup
+
+def setup():
+    testr = autoroster.core.open_roster("./testrosters/testrosterminimal.xlsx")
+
+@with_setup(setup)
+def test_organizes_by_exam():
+    test_exams = autoroster.core.get_exam_list()
+    assert any(('Biol 3040','Cs 2050','Engl 4050')) in test_exams
 #+END_SRC
 
 ** Output
@@ -75,7 +89,12 @@ def test_roster_contains_proper_header():
 ** Main
 
 #+BEGIN_SRC python :tangle autoroster/core.py :noweb yes
+import openpyxl
+import pandas
+
+
 <<open_roster>>
+<<get_exam_list>>
 #+END_SRC
 
 ** Misc
