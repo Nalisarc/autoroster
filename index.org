@@ -15,6 +15,8 @@ However that isn't a priority at the moment. Assume that you are not allowed to 
 * Requirements For Development
 Autoroster uses pyqt5 for the gui.
 I'm not sure if xlrd is still nessisary, if it's not I'm going to remove it.
+Pandas is used to handle the underlying data
+Openpyxl is used to write the data to an xlsx file
 #+name: requirements
 #+BEGIN_SRC text :tangle requirements.txt
   pyqt5
@@ -22,6 +24,7 @@ I'm not sure if xlrd is still nessisary, if it's not I'm going to remove it.
   numpy
   xlrd
   openpyxl
+  nose
 #+END_SRC
 
 
@@ -66,21 +69,28 @@ def test_roster_contains_proper_header():
 *** Filter exams
 #+name: get_exam_list
 #+BEGIN_SRC python
+  def get_exam_list(dataframe):
+      raw_exam_list = list(dataframe["SP Exam"].unique())
+      exam_list = [exam for exam in raw_exam_list if str(type(exam)) == "<class 'str'>"]
+      exam_list.sort()
+      return exam_list
 #+END_SRC
-
+    
 **** Tests
 #+BEGIN_SRC python :tangle tests/test_filter_input.py
-import autoroster.core
-from nose.tools import with_setup
+  import autoroster.core
+  from nose.tools import with_setup
 
-def setup():
-    testr = autoroster.core.open_roster("./testrosters/testrosterminimal.xlsx")
+  def setup():
+      testr = autoroster.core.open_roster("./testrosters/testrosterminimal.xlsx")
 
-@with_setup(setup)
-def test_organizes_by_exam():
-    test_exams = autoroster.core.get_exam_list()
-    assert any(('Biol 3040','Cs 2050','Engl 4050')) in test_exams
+  def test_organizes_by_exam():
+      testr = autoroster.core.open_roster("./testrosters/testrosterminimal.xlsx")
+      test_exams = autoroster.core.get_exam_list(testr)
+      assert any([(x in ['Biol 3040', 'Cs 2050', 'Engl 4050']) for x in test_exams]), test_exams
 #+END_SRC
+
+*** Filter examgroups
 
 ** Output
 

@@ -1,5 +1,7 @@
-  pyqt5
-  pandas
-  numpy
-  xlrd
-  openpyxl
+
+pyqt5
+pandas
+numpy
+xlrd
+openpyxl
+nose
