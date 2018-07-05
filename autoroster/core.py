@@ -21,3 +21,8 @@ def get_exam_list(dataframe, column):
     exam_list = [exam for exam in raw_exam_list if str(type(exam)) == "<class 'str'>"]
     exam_list.sort()
     return exam_list
+def get_student_info(dataframe,):
+    student_info = pandas.DataFrame(
+    dataframe, columns=["Student Name", "No Show", "Completed"])
+    sorted_info = student_info.sort_values("Student Name")
+    return sorted_info

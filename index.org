@@ -1,18 +1,23 @@
 #+title: Auto Roster Report Maker
 #+Author: Daniel Alexander Smith
 #+email: u0346076@utah.edu
-#+TAGS: readme(r) noexport(n)
 #+STARTUP: content
+
 
 * TODO Readme                                                        :readme:
 Autoroster is a program used to generate daily and weekly roster reports.
 
+#+begin_src org :tangle README.md 
 
+#+end_src
 * TODO Licence                                                      :licence:
 Right now this program does not have a license. I'll most likely give it either a GPL or an LGPL.
 However that isn't a priority at the moment. Assume that you are not allowed to use it, unless I've told you it's okay.
+#+begin_src org :tangle LICENCE.md 
 
-* Requirements For Development
+#+end_src
+
+* Development
 Autoroster uses pyqt5 for the gui.
 I'm not sure if xlrd is still nessisary, if it's not I'm going to remove it.
 Pandas is used to handle the underlying data
@@ -30,9 +35,9 @@ Openpyxl is used to write the data to an xlsx file
 
 
 
-** Data input and Processing
+* Data input and Processing
 
-*** Read in workbook
+** Read in workbook
 #+name: open_roster
 #+BEGIN_SRC python
 
@@ -49,7 +54,7 @@ def open_roster(path, skip=2):
 
     return df
 #+END_SRC
-**** Tests
+*** Tests
  #+name: datainp-tests
  #+BEGIN_SRC python :tangle tests/test_datainp.py
 import autoroster.core
@@ -66,7 +71,7 @@ def test_roster_contains_proper_header():
     assert "Student Name" in list(testr)
 
  #+END_SRC
-*** Filter exams
+** Filter exams
 #+name: get_exam_list
 #+BEGIN_SRC python
   def get_exam_list(dataframe, column):
@@ -76,7 +81,7 @@ def test_roster_contains_proper_header():
       return exam_list
 #+END_SRC
     
-**** Tests
+*** Tests
 #+BEGIN_SRC python :tangle tests/test_filter_input.py
   import autoroster.core
   from nose.tools import with_setup
@@ -93,15 +98,39 @@ def test_roster_contains_proper_header():
       testr = autoroster.core.open_roster("./testrosters/testrosterminimal.xlsx")
       test_exams = autoroster.core.get_exam_list(testr, "Notes",)
       assert test_exams == [], test_exams #This field is empty
-      
 #+END_SRC
 
 
 *** Get Student info
 
-** Excel Speadsheets
+#+name: get_student_info
+#+begin_src python
+  def get_student_info(dataframe,):
+      student_info = pandas.DataFrame(
+      dataframe, columns=["Student Name", "No Show", "Completed"])
+      sorted_info = student_info.sort_values("Student Name")
+      return sorted_info
 
-*** TODO Forbidden Characters
+      
+#+end_src
+
+**** Tests
+
+#+begin_src python :tangle tests/test_get_student_info.py 
+  import autoroster.core
+
+  def test_can_get_student_info():
+      testr = autoroster.core.open_roster("./testrosters/testrosterminimal.xlsx")
+      student_info = autoroster.core.get_student_info(testr)
+      assert all([x in ["Student Name", "No Show", "Completed"] for x in list(student_info)])
+      assert "Notes" not in list(student_info)
+#+end_src
+
+#+RESULTS:
+
+* Excel Speadsheets
+
+** TODO Forbidden Characters
 Excel Sheet names cannot have any of the following characters.
 Attempting to use them in a sheet name will at best crash excel and at worse mangle
 the data irreparably. 
@@ -113,12 +142,12 @@ The excel template should automatically trunicate these characters.
 #+end_src
 
 
-*** TODO Sheet name length
-Excel sheets cannot be longer than call_sheet_name_max_len().
+** TODO Sheet name length
+Excel sheets cannot be longer than call_sheet_name_max_length() =31=.
 While this will not inherently destroy the data, excel will throw an error if a sheet name
 exceeds this limit.
 
-As such, the excel templates should automatically trunicate names at this point.
+As such, the excel templates should automatically trunicate names at that character.
 
 
 #+name: sheet_name_max_length
@@ -133,7 +162,7 @@ As such, the excel templates should automatically trunicate names at this point.
 
 ** UI
 
-** Main
+* Main								   :noexport:
 
 #+BEGIN_SRC python :tangle autoroster/core.py :noweb yes
 import openpyxl
@@ -142,9 +171,10 @@ import pandas
 
 <<open_roster>>
 <<get_exam_list>>
+<<get_student_info>>
 #+END_SRC
 
-** Misc
+* Misc								   :noexport:
 To get elpy to work properly, the following packages.
 #+name: elpy-packs
 #+BEGIN_EXAMPLE
@@ -153,3 +183,19 @@ To get elpy to work properly, the following packages.
   Autopep8
   flake8
 #+END_EXAMPLE
+
+* Default Configuation
+
+* TODO Tests?							  :tentative:
+Maybe set up a cool thing that provides a table and whether or not the test passed
+and any messages if it didn't
+
+* TODO Logger							  :tentative:
+Set up some actual logging system to make sure I can see error outputs
+
+* TODO Building Exe						  :tentative:
+setup.py will go here
+Use something like cx_freeze to make autoroster an exe
+
+* TODO OTA Update						  :tentative:
+Set up something so that it will get releases automagically from github so I don't have to manually reinstall
